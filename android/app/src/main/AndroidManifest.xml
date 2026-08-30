@@ -1,4 +1,6 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android">
+    <uses-permission android:name="com.android.alarm.permission.SET_ALARM"/>
+
     <application
         android:label="rituals"
         android:name="${applicationName}"
@@ -40,6 +42,12 @@
         <intent>
             <action android:name="android.intent.action.PROCESS_TEXT"/>
             <data android:mimeType="text/plain"/>
+        </intent>
+        <!-- Package visibility for the clock app. Without this,
+             Intent.resolveActivity() returns null on Android 11+ (API 30) even
+             when a clock app is installed, and alarms silently never get set. -->
+        <intent>
+            <action android:name="android.intent.action.SET_ALARM"/>
         </intent>
     </queries>
 </manifest>
