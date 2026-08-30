@@ -3,23 +3,9 @@ import 'package:flutter/material.dart';
 import 'package:rituals/core/theme/app_colors.dart';
 import 'package:rituals/core/theme/app_typography.dart';
 import 'package:rituals/features/tasks/data/models/task.dart';
+import 'package:rituals/features/tasks/data/models/task_draft.dart';
 
-class TaskDraft {
-  const TaskDraft({
-    required this.title,
-    required this.note,
-    required this.isRepeating,
-    required this.hasAlarm,
-    required this.alarmMinutes,
-  });
-
-  final String title;
-  final String? note;
-  final bool isRepeating;
-  final bool hasAlarm;
-  final int? alarmMinutes;
-}
-
+/// Full-height sheet for writing a task, used for both new and existing ones.
 class TaskFormSheet extends StatefulWidget {
   const TaskFormSheet({super.key, this.task});
 

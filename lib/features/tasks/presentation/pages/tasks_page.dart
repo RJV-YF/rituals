@@ -1,34 +1,26 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:rituals/core/services/alarm_service.dart';
 import 'package:rituals/core/theme/app_colors.dart';
 import 'package:rituals/core/theme/app_typography.dart';
 import 'package:rituals/features/tasks/data/models/task.dart';
-import 'package:rituals/features/tasks/data/task_repository.dart';
+import 'package:rituals/features/tasks/presentation/cubit/tasks_cubit.dart';
+import 'package:rituals/features/tasks/presentation/cubit/tasks_state.dart';
 import 'package:rituals/features/tasks/presentation/pages/task_form_sheet.dart';
 import 'package:rituals/features/tasks/presentation/widgets/task_fab.dart';
 import 'package:rituals/features/tasks/presentation/widgets/task_tile.dart';
 
 class TasksPage extends StatefulWidget {
-  const TasksPage({
-    super.key,
-    required this.repository,
-    this.alarmService = const AlarmService(),
-  });
-
-  final TaskRepository repository;
-  final AlarmService alarmService;
+  const TasksPage({super.key});
 
   @override
   State<TasksPage> createState() => _TasksPageState();
 }
 
 class _TasksPageState extends State<TasksPage> with WidgetsBindingObserver {
-  late DateTime _today;
-
   @override
   void initState() {
     super.initState();
-    _today = dayOf(DateTime.now());
     WidgetsBinding.instance.addObserver(this);
   }
 
@@ -40,97 +32,52 @@ class _TasksPageState extends State<TasksPage> with WidgetsBindingObserver {
 
   @override
   void didChangeAppLifecycleState(AppLifecycleState state) {
-    if (state == AppLifecycleState.resumed) _refreshDay();
-  }
-
-  Future<void> _refreshDay() async {
-    final now = dayOf(DateTime.now());
-    if (now == _today) return;
-    await widget.repository.rollOverInto(now);
-    if (!mounted) return;
-    setState(() => _today = now);
+    if (state == AppLifecycleState.resumed) {
+      context.read<TasksCubit>().refreshDay();
+    }
   }
 
   Future<void> _createTask() async {
+    final cubit = context.read<TasksCubit>();
     final draft = await TaskFormSheet.show(context);
     if (draft == null) return;
 
-    await widget.repository.create(
-      title: draft.title,
-      note: draft.note,
-      isRepeating: draft.isRepeating,
-      hasAlarm: draft.hasAlarm,
-      alarmMinutes: draft.alarmMinutes,
-      day: _today,
-    );
-
-    if (draft.hasAlarm) {
-      await _sendToClockApp(
-        draft.title,
-        draft.alarmMinutes!,
-        draft.isRepeating,
-      );
-    }
+    _reportAlarm(await cubit.createTask(draft));
   }
 
   Future<void> _editTask(Task task) async {
+    final cubit = context.read<TasksCubit>();
     final draft = await TaskFormSheet.show(context, task: task);
     if (draft == null) return;
 
-    final alarmChanged =
-        draft.hasAlarm &&
-        (!task.hasAlarm || draft.alarmMinutes != task.alarmMinutes);
-
-    task
-      ..title = draft.title
-      ..note = draft.note
-      ..isRepeating = draft.isRepeating
-      ..hasAlarm = draft.hasAlarm
-      ..alarmMinutes = draft.alarmMinutes;
-    await widget.repository.update(task);
-
-    if (alarmChanged) {
-      await _sendToClockApp(
-        draft.title,
-        draft.alarmMinutes!,
-        draft.isRepeating,
-      );
-    }
+    _reportAlarm(await cubit.editTask(task, draft));
   }
 
   Future<void> _deleteTask(Task task) async {
-    await widget.repository.delete(task.id);
+    final cubit = context.read<TasksCubit>();
+    await cubit.deleteTask(task);
     if (!mounted) return;
 
-    ScaffoldMessenger.of(context)
-      ..hideCurrentSnackBar()
-      ..showSnackBar(
-        SnackBar(
-          content: Text('Deleted “${task.title}”'),
-          behavior: SnackBarBehavior.floating,
-          backgroundColor: AppColors.ink,
-          action: SnackBarAction(
-            label: 'Undo',
-            textColor: AppColors.parchment,
-            onPressed: () => widget.repository.restore(task),
-          ),
-        ),
-      );
+    _showMessage(
+      'Deleted “${task.title}”',
+      action: SnackBarAction(
+        label: 'Undo',
+        textColor: AppColors.parchment,
+        onPressed: () => cubit.restoreTask(task),
+      ),
+    );
   }
 
-  Future<void> _sendToClockApp(String title, int minutes, bool daily) async {
-    final result = await widget.alarmService.setAlarm(
-      hour: minutes ~/ 60,
-      minute: minutes % 60,
-      label: title,
-      daily: daily,
-    );
-    if (!mounted || result == AlarmResult.set) return;
+  void _reportAlarm(AlarmResult? result) {
+    if (!mounted || result == null || result == AlarmResult.set) return;
 
-    final message = switch (result) {
+    _showMessage(switch (result) {
       AlarmResult.noClockApp => 'No clock app on this device to set the alarm.',
       _ => 'Could not set the alarm in your clock app.',
-    };
+    });
+  }
+
+  void _showMessage(String message, {SnackBarAction? action}) {
     ScaffoldMessenger.of(context)
       ..hideCurrentSnackBar()
       ..showSnackBar(
@@ -138,6 +85,7 @@ class _TasksPageState extends State<TasksPage> with WidgetsBindingObserver {
           content: Text(message),
           behavior: SnackBarBehavior.floating,
           backgroundColor: AppColors.ink,
+          action: action,
         ),
       );
   }
@@ -147,60 +95,22 @@ class _TasksPageState extends State<TasksPage> with WidgetsBindingObserver {
     return Scaffold(
       backgroundColor: AppColors.parchment,
       body: SafeArea(
-        child: StreamBuilder<List<Task>>(
-          stream: widget.repository.watchDay(_today),
-          builder: (context, snapshot) {
-            final tasks = snapshot.data ?? const <Task>[];
-            final kept = tasks.where((task) => task.isCompleted).length;
+        child: BlocBuilder<TasksCubit, TasksState>(
+          builder: (context, state) {
+            // The header stays put across states so the day and title don't
+            // flash in and out while the list loads.
+            final day = switch (state) {
+              TasksLoaded(:final day) => day,
+              _ => context.read<TasksCubit>().day,
+            };
 
             return CustomScrollView(
               slivers: [
                 SliverPadding(
                   padding: const EdgeInsets.fromLTRB(24, 20, 24, 8),
-                  sliver: SliverToBoxAdapter(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          _formatDay(_today).toUpperCase(),
-                          style: AppTypography.eyebrow,
-                        ),
-                        const SizedBox(height: 6),
-                        const Text('Rituals', style: AppTypography.pageTitle),
-                        const SizedBox(height: 4),
-                        Text(
-                          tasks.isEmpty
-                              ? 'Nothing on today’s list yet'
-                              : '$kept of ${tasks.length} kept today',
-                          style: AppTypography.subtitle,
-                        ),
-                      ],
-                    ),
-                  ),
+                  sliver: SliverToBoxAdapter(child: _Header(day: day, state: state)),
                 ),
-
-                if (tasks.isEmpty)
-                  const SliverFillRemaining(
-                    hasScrollBody: false,
-                    child: _EmptyList(),
-                  )
-                else
-                  SliverPadding(
-                    padding: const EdgeInsets.only(top: 8, bottom: 100),
-                    sliver: SliverList.builder(
-                      itemCount: tasks.length,
-                      itemBuilder: (context, index) {
-                        final task = tasks[index];
-                        return TaskTile(
-                          task: task,
-                          onToggle: (isCompleted) =>
-                              widget.repository.setCompleted(task, isCompleted),
-                          onEdit: () => _editTask(task),
-                          onDelete: () => _deleteTask(task),
-                        );
-                      },
-                    ),
-                  ),
+                _body(state),
               ],
             );
           },
@@ -209,10 +119,88 @@ class _TasksPageState extends State<TasksPage> with WidgetsBindingObserver {
       floatingActionButton: TaskFab(onPressed: _createTask),
     );
   }
+
+  Widget _body(TasksState state) {
+    switch (state) {
+      case TasksLoading():
+        return const SliverFillRemaining(
+          hasScrollBody: false,
+          child: Center(
+            child: CircularProgressIndicator(color: AppColors.moss),
+          ),
+        );
+
+      case TasksFailure(:final message):
+        return SliverFillRemaining(
+          hasScrollBody: false,
+          child: _CenteredNotice(title: message),
+        );
+
+      case TasksLoaded(:final tasks) when tasks.isEmpty:
+        return const SliverFillRemaining(
+          hasScrollBody: false,
+          child: _CenteredNotice(
+            title: 'Start with one thing you want to come back to.',
+            detail: 'Anything you mark as repeating shows up again tomorrow.',
+          ),
+        );
+
+      case TasksLoaded(:final tasks):
+        return SliverPadding(
+          padding: const EdgeInsets.only(top: 8, bottom: 100),
+          sliver: SliverList.builder(
+            itemCount: tasks.length,
+            itemBuilder: (context, index) {
+              final task = tasks[index];
+              return TaskTile(
+                task: task,
+                onToggle: (isCompleted) =>
+                    context.read<TasksCubit>().setCompleted(task, isCompleted),
+                onEdit: () => _editTask(task),
+                onDelete: () => _deleteTask(task),
+              );
+            },
+          ),
+        );
+    }
+  }
 }
 
-class _EmptyList extends StatelessWidget {
-  const _EmptyList();
+class _Header extends StatelessWidget {
+  const _Header({required this.day, required this.state});
+
+  final DateTime day;
+  final TasksState state;
+
+  @override
+  Widget build(BuildContext context) {
+    final subtitle = switch (state) {
+      TasksLoaded(:final isEmpty, :final keptCount, :final tasks) =>
+        isEmpty
+            ? 'Nothing on today’s list yet'
+            : '$keptCount of ${tasks.length} kept today',
+      TasksFailure() => 'Something went wrong',
+      TasksLoading() => 'Gathering today’s list…',
+    };
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(_formatDay(day).toUpperCase(), style: AppTypography.eyebrow),
+        const SizedBox(height: 6),
+        const Text('Rituals', style: AppTypography.pageTitle),
+        const SizedBox(height: 4),
+        Text(subtitle, style: AppTypography.subtitle),
+      ],
+    );
+  }
+}
+
+class _CenteredNotice extends StatelessWidget {
+  const _CenteredNotice({required this.title, this.detail});
+
+  final String title;
+  final String? detail;
 
   @override
   Widget build(BuildContext context) {
@@ -222,16 +210,18 @@ class _EmptyList extends StatelessWidget {
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
           Text(
-            'Start with one thing you want to come back to.',
+            title,
             textAlign: TextAlign.center,
             style: AppTypography.emptyMessage,
           ),
-          const SizedBox(height: 8),
-          Text(
-            'Anything you mark as repeating shows up again tomorrow.',
-            textAlign: TextAlign.center,
-            style: AppTypography.subtitle,
-          ),
+          if (detail case final detail?) ...[
+            const SizedBox(height: 8),
+            Text(
+              detail,
+              textAlign: TextAlign.center,
+              style: AppTypography.subtitle,
+            ),
+          ],
         ],
       ),
     );

@@ -1,17 +1,11 @@
 import 'package:isar_community/isar.dart';
-import 'package:path_provider/path_provider.dart';
+import 'package:rituals/core/database/app_database.dart';
 import 'package:rituals/features/tasks/data/models/task.dart';
 
 class TaskRepository {
-  TaskRepository(this._isar);
+  TaskRepository(AppDatabase database) : _isar = database.isar;
 
   final Isar _isar;
-
-  static Future<TaskRepository> open() async {
-    final dir = await getApplicationDocumentsDirectory();
-    final isar = await Isar.open([TaskSchema], directory: dir.path);
-    return TaskRepository(isar);
-  }
 
   /// Live list of the tasks belonging to [day], oldest first.
   Stream<List<Task>> watchDay(DateTime day) {
@@ -113,6 +107,4 @@ class TaskRepository {
     await _isar.writeTxn(() => _isar.tasks.putAll(carried));
     return carried.length;
   }
-
-  Future<void> close() => _isar.close();
 }
