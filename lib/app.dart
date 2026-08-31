@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:rituals/core/database/app_database.dart';
 import 'package:rituals/core/theme/app_theme.dart';
+import 'package:rituals/features/heatmaps/data/analytics_repository.dart';
 import 'package:rituals/features/tasks/data/task_repository.dart';
 import 'package:rituals/features/tasks/presentation/cubit/tasks_cubit.dart';
 import 'package:rituals/features/tasks/presentation/pages/tasks_page.dart';
@@ -13,8 +14,11 @@ class App extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return RepositoryProvider(
-      create: (_) => TaskRepository(database),
+    return MultiRepositoryProvider(
+      providers: [
+        RepositoryProvider(create: (_) => TaskRepository(database)),
+        RepositoryProvider(create: (_) => AnalyticsRepository(database)),
+      ],
       child: MaterialApp(
         debugShowCheckedModeBanner: false,
         theme: AppTheme.light,

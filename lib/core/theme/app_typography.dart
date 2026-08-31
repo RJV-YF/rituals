@@ -93,6 +93,29 @@ abstract final class AppTypography {
     color: AppColors.inkMuted,
   );
 
+  /// The one big number on a stat card.
+  static const statValue = TextStyle(
+    fontFamily: _display,
+    fontSize: 26,
+    fontWeight: FontWeight.w700,
+    color: AppColors.ink,
+  );
+
+  /// The caption under a stat, and the month name on a summary row.
+  static const statLabel = TextStyle(
+    fontFamily: _body,
+    fontSize: 12,
+    fontWeight: FontWeight.w600,
+    color: AppColors.inkMuted,
+  );
+
+  static const monthTitle = TextStyle(
+    fontFamily: _body,
+    fontSize: 15,
+    fontWeight: FontWeight.w700,
+    color: AppColors.ink,
+  );
+
   static const button = TextStyle(
     fontFamily: _body,
     fontSize: 16,

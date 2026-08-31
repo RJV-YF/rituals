@@ -1,5 +1,6 @@
 import 'package:isar_community/isar.dart';
 import 'package:path_provider/path_provider.dart';
+import 'package:rituals/features/heatmaps/data/models/month_summary.dart';
 import 'package:rituals/features/tasks/data/models/task.dart';
 
 /// Owns the app's single Isar instance.
@@ -13,7 +14,7 @@ class AppDatabase {
   final Isar isar;
 
   /// Every collection in the app. New collections get added here.
-  static const _schemas = [TaskSchema];
+  static const _schemas = [TaskSchema, MonthSummarySchema];
 
   static Future<AppDatabase> open() async {
     final directory = await getApplicationDocumentsDirectory();

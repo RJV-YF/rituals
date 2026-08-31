@@ -1,8 +1,11 @@
+import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:rituals/core/services/alarm_service.dart';
 import 'package:rituals/core/theme/app_colors.dart';
 import 'package:rituals/core/theme/app_typography.dart';
+import 'package:rituals/core/utils/date_labels.dart';
+import 'package:rituals/features/heatmaps/presentation/pages/heatmap_page.dart';
 import 'package:rituals/features/tasks/data/models/task.dart';
 import 'package:rituals/features/tasks/presentation/cubit/tasks_cubit.dart';
 import 'package:rituals/features/tasks/presentation/cubit/tasks_state.dart';
@@ -36,6 +39,8 @@ class _TasksPageState extends State<TasksPage> with WidgetsBindingObserver {
       context.read<TasksCubit>().refreshDay();
     }
   }
+
+  void _openHeatmap() => Navigator.of(context).push(HeatmapPage.route());
 
   Future<void> _createTask() async {
     final cubit = context.read<TasksCubit>();
@@ -107,8 +112,14 @@ class _TasksPageState extends State<TasksPage> with WidgetsBindingObserver {
             return CustomScrollView(
               slivers: [
                 SliverPadding(
-                  padding: const EdgeInsets.fromLTRB(24, 20, 24, 8),
-                  sliver: SliverToBoxAdapter(child: _Header(day: day, state: state)),
+                  padding: const EdgeInsets.fromLTRB(24, 16, 14, 8),
+                  sliver: SliverToBoxAdapter(
+                    child: _Header(
+                      day: day,
+                      state: state,
+                      onHeatmapPressed: _openHeatmap,
+                    ),
+                  ),
                 ),
                 _body(state),
               ],
@@ -167,10 +178,15 @@ class _TasksPageState extends State<TasksPage> with WidgetsBindingObserver {
 }
 
 class _Header extends StatelessWidget {
-  const _Header({required this.day, required this.state});
+  const _Header({
+    required this.day,
+    required this.state,
+    required this.onHeatmapPressed,
+  });
 
   final DateTime day;
   final TasksState state;
+  final VoidCallback onHeatmapPressed;
 
   @override
   Widget build(BuildContext context) {
@@ -183,14 +199,26 @@ class _Header extends StatelessWidget {
       TasksLoading() => 'Gathering today’s list…',
     };
 
-    return Column(
+    return Row(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text(_formatDay(day).toUpperCase(), style: AppTypography.eyebrow),
-        const SizedBox(height: 6),
-        const Text('Rituals', style: AppTypography.pageTitle),
-        const SizedBox(height: 4),
-        Text(subtitle, style: AppTypography.subtitle),
+        Expanded(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                DateLabels.dayLine(day).toUpperCase(),
+                style: AppTypography.eyebrow,
+              ),
+              const SizedBox(height: 6),
+              const Text('Rituals', style: AppTypography.pageTitle),
+              const SizedBox(height: 4),
+              Text(subtitle, style: AppTypography.subtitle),
+            ],
+          ),
+        ),
+        const SizedBox(width: 8),
+        _HeatmapButton(onPressed: onHeatmapPressed),
       ],
     );
   }
@@ -228,31 +256,34 @@ class _CenteredNotice extends StatelessWidget {
   }
 }
 
-const _weekdays = [
-  'Monday',
-  'Tuesday',
-  'Wednesday',
-  'Thursday',
-  'Friday',
-  'Saturday',
-  'Sunday',
-];
+/// Opens the consistency grid. Sits at the top right of the day's header,
+/// where it is reachable without competing with the list itself.
+class _HeatmapButton extends StatelessWidget {
+  const _HeatmapButton({required this.onPressed});
 
-const _months = [
-  'January',
-  'February',
-  'March',
-  'April',
-  'May',
-  'June',
-  'July',
-  'August',
-  'September',
-  'October',
-  'November',
-  'December',
-];
+  final VoidCallback onPressed;
 
-String _formatDay(DateTime day) {
-  return '${_weekdays[day.weekday - 1]} · ${day.day} ${_months[day.month - 1]}';
+  @override
+  Widget build(BuildContext context) {
+    return Tooltip(
+      message: 'Consistency',
+      child: Material(
+        color: AppColors.surface,
+        borderRadius: BorderRadius.circular(14),
+        child: InkWell(
+          onTap: onPressed,
+          borderRadius: BorderRadius.circular(14),
+          child: const SizedBox(
+            width: 44,
+            height: 44,
+            child: Icon(
+              CupertinoIcons.square_grid_3x2_fill,
+              size: 20,
+              color: AppColors.moss,
+            ),
+          ),
+        ),
+      ),
+    );
+  }
 }
