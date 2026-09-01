@@ -173,22 +173,36 @@ void main() {
   });
 
   group('HeatmapCubit.startOfRange', () {
-    test('starts at the month the user began in', () {
+    test('starts on the day the user began, not the 1st of that month', () {
       final start = HeatmapCubit.startOfRange(
         firstTracked: DateTime(2026, 5, 17),
         today: DateTime(2026, 8, 31),
       );
 
-      expect(start, DateTime(2026, 5, 1));
+      expect(start, DateTime(2026, 5, 17));
     });
 
-    test('reaches back no further than a year', () {
+    test('reaches back no further than a rolling year', () {
       final start = HeatmapCubit.startOfRange(
         firstTracked: DateTime(2021, 3, 4),
         today: DateTime(2026, 8, 31),
       );
 
       expect(start, DateTime(2025, 9, 1));
+      expect(start.difference(DateTime(2026, 8, 31)).inDays.abs(), 364);
+    });
+
+    test('the window rolls a day at a time, not a month at a time', () {
+      final onTheFirst = HeatmapCubit.startOfRange(
+        firstTracked: DateTime(2020, 1, 1),
+        today: DateTime(2026, 9, 1),
+      );
+      final onTheSecond = HeatmapCubit.startOfRange(
+        firstTracked: DateTime(2020, 1, 1),
+        today: DateTime(2026, 9, 2),
+      );
+
+      expect(onTheSecond, _addDays(onTheFirst, 1));
     });
 
     test('crosses the new year cleanly', () {
@@ -197,7 +211,10 @@ void main() {
         today: DateTime(2026, 2, 10),
       );
 
-      expect(start, DateTime(2025, 3, 1));
+      expect(start, DateTime(2025, 2, 11));
     });
   });
 }
+
+DateTime _addDays(DateTime day, int count) =>
+    DateTime(day.year, day.month, day.day + count);

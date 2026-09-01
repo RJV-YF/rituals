@@ -38,6 +38,10 @@ abstract final class DateLabels {
   /// `31 August` — a day named without its weekday.
   static String dayAndMonth(DateTime date) => '${date.day} ${month(date)}';
 
+  /// `15 August 2026` — a day named in full, for the date a history starts on.
+  static String dayMonthYear(DateTime date) =>
+      '${date.day} ${month(date)} ${date.year}';
+
   /// `August 2026`, or just `August` when [date] falls in [relativeTo]'s year.
   static String monthYear(DateTime date, {DateTime? relativeTo}) {
     if (relativeTo != null && relativeTo.year == date.year) return month(date);

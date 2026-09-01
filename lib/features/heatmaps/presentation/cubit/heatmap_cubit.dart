@@ -14,7 +14,7 @@ class HeatmapCubit extends Cubit<HeatmapState> {
   ///
   /// A year is as much as reads at a glance; past that the strip is mostly
   /// scrolling over squares nobody is looking at.
-  static const maxMonths = 12;
+  static const maxDays = 365;
 
   Future<void> load() async {
     emit(const HeatmapLoading());
@@ -63,18 +63,19 @@ class HeatmapCubit extends Cubit<HeatmapState> {
     if (state case final HeatmapReady ready) emit(ready.select(null));
   }
 
-  /// Where the grid begins: the 1st of the month the user actually started in,
-  /// so it never opens on a run of empty squares from before they began — and
-  /// never further back than [maxMonths].
+  /// Where the grid begins: the day the user actually started, and never
+  /// further back than [maxDays].
   ///
-  /// Starting on a month boundary is also what keeps the month labels above
-  /// the grid sitting over the columns they belong to.
+  /// The window rolls by the day rather than by the month. Anchoring it to the
+  /// 1st of the month someone began in would open their history on a run of
+  /// squares from before they were here, and would keep that month at the head
+  /// of the strip long after it stopped being the month they are living in.
   static DateTime startOfRange({
     required DateTime firstTracked,
     required DateTime today,
   }) {
-    final began = DateTime(firstTracked.year, firstTracked.month);
-    final limit = DateTime(today.year, today.month - (maxMonths - 1));
+    final began = dayOf(firstTracked);
+    final limit = DateTime(today.year, today.month, today.day - maxDays + 1);
     return began.isAfter(limit) ? began : limit;
   }
 }

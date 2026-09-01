@@ -109,6 +109,25 @@ abstract final class AppTypography {
     color: AppColors.inkMuted,
   );
 
+  /// The date printed inside a heatmap square. Tabular figures so the 1 and
+  /// the 8 sit in columns the eye can read down.
+  static const heatmapDay = TextStyle(
+    fontFamily: _body,
+    fontSize: 11,
+    fontWeight: FontWeight.w600,
+    height: 1,
+    fontFeatures: [FontFeature.tabularFigures()],
+  );
+
+  /// The month and weekday names around the heatmap grid.
+  static const heatmapLabel = TextStyle(
+    fontFamily: _body,
+    fontSize: 10,
+    fontWeight: FontWeight.w700,
+    letterSpacing: 0.4,
+    color: AppColors.inkMuted,
+  );
+
   static const monthTitle = TextStyle(
     fontFamily: _body,
     fontSize: 15,

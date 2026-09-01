@@ -78,8 +78,9 @@ class _Ready extends StatelessWidget {
 
         HeatmapCard(
           startDate: state.startDate,
-          endDate: state.endDate,
+          today: state.endDate,
           datasets: state.datasets,
+          selectedDay: state.selectedDay?.day,
           onDayTapped: context.read<HeatmapCubit>().selectDay,
         ),
         const SizedBox(height: 12),
@@ -108,7 +109,7 @@ class _Header extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final stats = state.stats;
-    final since = DateLabels.monthYear(state.startDate);
+    final since = DateLabels.dayMonthYear(state.startDate);
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
