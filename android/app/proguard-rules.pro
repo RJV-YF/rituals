@@ -1,0 +1,2 @@
+-keep class dev.isar.** { *; }
+-keep class io.isar.** { *; }

@@ -28,6 +28,8 @@ dev_dependencies:
     sdk: flutter
   isar_community_generator: ^3.3.2
   build_runner: ^2.4.0
+  flutter_launcher_icons: ^0.14.3
+  flutter_native_splash: ^2.4.4
 
   
   flutter_lints: ^6.0.0
@@ -39,9 +41,9 @@ flutter:
   uses-material-design: true
 
   # To add assets to your application, add an assets section, like this:
-  # assets:
-  #   - images/a_dot_burr.jpeg
-  #   - images/a_dot_ham.jpeg
+  assets:
+    - assets/icon/
+
   
   fonts:
     - family: Fraunces
@@ -67,3 +69,20 @@ flutter:
           weight: 700
   
   
+flutter_launcher_icons:
+  android: "ic_launcher"
+  ios: true
+  image_path: "assets/icon/app_icon.png"
+  min_sdk_android: 21
+  adaptive_icon_background: "#011404"
+  adaptive_icon_foreground: "assets/icon/app_icon_foreground.png"
+  remove_alpha_ios: true
+
+flutter_native_splash:
+  color: "#011404"
+  image: assets/icon/app_icon_foreground.png
+  android_12:
+    image: assets/icon/app_icon_foreground.png
+    icon_background_color: "#011404"
+  android: true
+  ios: true

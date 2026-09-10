@@ -1,4 +1,4 @@
-package com.example.rituals
+package dev.rajeever.rituals
 
 import android.app.Activity
 import android.content.ActivityNotFoundException
@@ -6,7 +6,6 @@ import android.content.Intent
 import android.provider.AlarmClock
 import io.flutter.plugin.common.MethodCall
 import io.flutter.plugin.common.MethodChannel
-import java.util.Calendar
 
 /**
  * Hands alarms to whichever clock app the device uses, via the public
@@ -19,16 +18,6 @@ class AlarmBridge(private val activity: Activity) {
 
     companion object {
         const val CHANNEL = "com.example.rituals/alarm"
-
-        private val EVERY_DAY = arrayListOf(
-            Calendar.MONDAY,
-            Calendar.TUESDAY,
-            Calendar.WEDNESDAY,
-            Calendar.THURSDAY,
-            Calendar.FRIDAY,
-            Calendar.SATURDAY,
-            Calendar.SUNDAY,
-        )
     }
 
     fun handle(call: MethodCall, result: MethodChannel.Result) {
@@ -47,7 +36,12 @@ class AlarmBridge(private val activity: Activity) {
         }
 
         val label = call.argument<String>("label").orEmpty()
-        val daily = call.argument<Boolean>("daily") ?: false
+
+        // Dart sends ISO weekdays (1 = Monday … 7 = Sunday); the clock app
+        // expects Calendar's numbering (1 = Sunday … 7 = Saturday).
+        val days = call.argument<List<Int>>("days").orEmpty()
+            .filter { it in 1..7 }
+            .map { it % 7 + 1 }
 
         val intent = Intent(AlarmClock.ACTION_SET_ALARM).apply {
             putExtra(AlarmClock.EXTRA_HOUR, hour)
@@ -55,8 +49,9 @@ class AlarmBridge(private val activity: Activity) {
             putExtra(AlarmClock.EXTRA_MESSAGE, label)
             // Set it without pulling the user out into the clock app.
             putExtra(AlarmClock.EXTRA_SKIP_UI, true)
-            if (daily) {
-                putExtra(AlarmClock.EXTRA_DAYS, EVERY_DAY)
+            // No days means a one-off alarm at the next occurrence.
+            if (days.isNotEmpty()) {
+                putIntegerArrayListExtra(AlarmClock.EXTRA_DAYS, ArrayList(days))
             }
         }
 
