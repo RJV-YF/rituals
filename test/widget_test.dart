@@ -52,17 +52,54 @@ void main() {
         seriesId: 7,
         hasAlarm: true,
         alarmMinutes: 435,
-      );
+      )..repeatDays = [1, 3, 5];
 
       final today = yesterday.copyForDay(DateTime(2026, 8, 31));
 
       expect(today.title, 'Morning Run');
       expect(today.note, 'Along the river');
       expect(today.isRepeating, isTrue);
+      expect(today.repeatDays, [1, 3, 5]);
       expect(today.hasAlarm, isTrue);
       expect(today.alarmMinutes, 435);
       expect(today.alarmHour, 7);
       expect(today.alarmMinute, 15);
+    });
+
+    test('does not share the day list with the copy it came from', () {
+      final yesterday = _task(seriesId: 7)..repeatDays = [1, 3, 5];
+
+      final today = yesterday.copyForDay(DateTime(2026, 8, 31));
+      today.repeatDays.add(7);
+
+      expect(yesterday.repeatDays, [1, 3, 5]);
+    });
+  });
+
+  group('Task.repeatsOn', () {
+    // 31 August 2026 is a Monday, 1 September a Tuesday.
+    final monday = DateTime(2026, 8, 31);
+    final tuesday = DateTime(2026, 9, 1);
+
+    test('only comes back on the picked weekdays', () {
+      final task = _task(seriesId: 7)..repeatDays = [1, 3, 5];
+
+      expect(task.repeatsOn(monday), isTrue);
+      expect(task.repeatsOn(tuesday), isFalse);
+    });
+
+    test('reads a task saved before days existed as every day', () {
+      final task = _task(seriesId: 7);
+
+      expect(task.scheduledDays, allWeekdays);
+      expect(task.repeatsOn(tuesday), isTrue);
+    });
+
+    test('never comes back once repeat is off, whatever the days say', () {
+      final task = _task(seriesId: 7, isRepeating: false)
+        ..repeatDays = [1, 2, 3, 4, 5, 6, 7];
+
+      expect(task.repeatsOn(monday), isFalse);
     });
   });
 }

@@ -152,7 +152,7 @@ class _TasksPageState extends State<TasksPage> with WidgetsBindingObserver {
           hasScrollBody: false,
           child: _CenteredNotice(
             title: 'Start with one thing you want to come back to.',
-            detail: 'Anything you mark as repeating shows up again tomorrow.',
+            detail: 'Anything you mark as repeating comes back on the days you pick.',
           ),
         );
 

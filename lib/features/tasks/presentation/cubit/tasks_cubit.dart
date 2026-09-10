@@ -64,6 +64,7 @@ class TasksCubit extends Cubit<TasksState> {
       title: draft.title,
       note: draft.note,
       isRepeating: draft.isRepeating,
+      repeatDays: draft.repeatDays,
       hasAlarm: draft.hasAlarm,
       alarmMinutes: draft.alarmMinutes,
       day: _day,
@@ -73,16 +74,22 @@ class TasksCubit extends Cubit<TasksState> {
   }
 
   /// Applies [draft] to [task]. The clock app is only touched when the alarm
-  /// is new or has moved, so re-saving an unchanged task stays silent.
+  /// is new, has moved, or now rings on different days, so re-saving an
+  /// unchanged task stays silent.
   Future<AlarmResult?> editTask(Task task, TaskDraft draft) async {
     final alarmChanged =
         draft.hasAlarm &&
-        (!task.hasAlarm || draft.alarmMinutes != task.alarmMinutes);
+        (!task.hasAlarm ||
+            draft.alarmMinutes != task.alarmMinutes ||
+            draft.isRepeating != task.isRepeating ||
+            (draft.isRepeating &&
+                !_sameDays(draft.repeatDays, task.scheduledDays)));
 
     task
       ..title = draft.title
       ..note = draft.note
       ..isRepeating = draft.isRepeating
+      ..repeatDays = draft.repeatDays
       ..hasAlarm = draft.hasAlarm
       ..alarmMinutes = draft.alarmMinutes;
     await _repo.update(task);
@@ -107,9 +114,12 @@ class TasksCubit extends Cubit<TasksState> {
       hour: minutes ~/ 60,
       minute: minutes % 60,
       label: draft.title,
-      daily: draft.isRepeating,
+      days: draft.isRepeating ? draft.repeatDays : const [],
     );
   }
+
+  static bool _sameDays(List<int> a, List<int> b) =>
+      a.toSet().length == b.toSet().length && a.toSet().containsAll(b);
 
   @override
   Future<void> close() async {

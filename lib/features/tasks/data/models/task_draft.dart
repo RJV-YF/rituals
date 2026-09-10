@@ -7,6 +7,7 @@ class TaskDraft {
     required this.title,
     required this.note,
     required this.isRepeating,
+    required this.repeatDays,
     required this.hasAlarm,
     required this.alarmMinutes,
   });
@@ -14,6 +15,11 @@ class TaskDraft {
   final String title;
   final String? note;
   final bool isRepeating;
+
+  /// ISO weekdays picked for the repeat, sorted. Empty when [isRepeating] is
+  /// false.
+  final List<int> repeatDays;
+
   final bool hasAlarm;
 
   /// Minutes since local midnight, or null when [hasAlarm] is false.

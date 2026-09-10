@@ -28,6 +28,7 @@ class TaskRepository {
     required String title,
     String? note,
     required bool isRepeating,
+    List<int> repeatDays = const [],
     required bool hasAlarm,
     int? alarmMinutes,
     DateTime? day,
@@ -37,6 +38,7 @@ class TaskRepository {
       ..title = title
       ..note = note
       ..isRepeating = isRepeating
+      ..repeatDays = List.of(repeatDays)
       ..hasAlarm = hasAlarm
       ..alarmMinutes = alarmMinutes
       ..date = dayOf(day ?? DateTime.now())
@@ -73,9 +75,11 @@ class TaskRepository {
   /// Carries repeating tasks forward onto [today].
   ///
   /// Looks at the most recent instance of each series before today: if that
-  /// one still has repeat switched on and the series has nothing on today yet,
-  /// a fresh uncompleted copy is added. Turning repeat off on a task is
-  /// therefore what ends the series — the next rollover simply skips it.
+  /// one still has repeat switched on, lists today's weekday among its repeat
+  /// days, and the series has nothing on today yet, a fresh uncompleted copy
+  /// is added. Turning repeat off on a task is therefore what ends the series
+  /// — the next rollover simply skips it. A day off the schedule adds no row,
+  /// and the series picks up again on its next scheduled day.
   ///
   /// Safe to call on every launch; it is a no-op once today is populated.
   Future<int> rollOverInto(DateTime today) async {
@@ -99,7 +103,7 @@ class TaskRepository {
 
     final carried = [
       for (final task in latest.values)
-        if (task.isRepeating && !existing.contains(task.seriesId))
+        if (task.repeatsOn(day) && !existing.contains(task.seriesId))
           task.copyForDay(day),
     ];
     if (carried.isEmpty) return 0;

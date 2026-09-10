@@ -40,8 +40,13 @@ const TaskSchema = CollectionSchema(
       type: IsarType.bool,
     ),
     r'note': PropertySchema(id: 6, name: r'note', type: IsarType.string),
-    r'seriesId': PropertySchema(id: 7, name: r'seriesId', type: IsarType.long),
-    r'title': PropertySchema(id: 8, name: r'title', type: IsarType.string),
+    r'repeatDays': PropertySchema(
+      id: 7,
+      name: r'repeatDays',
+      type: IsarType.longList,
+    ),
+    r'seriesId': PropertySchema(id: 8, name: r'seriesId', type: IsarType.long),
+    r'title': PropertySchema(id: 9, name: r'title', type: IsarType.string),
   },
 
   estimateSize: _taskEstimateSize,
@@ -98,6 +103,7 @@ int _taskEstimateSize(
       bytesCount += 3 + value.length * 3;
     }
   }
+  bytesCount += 3 + object.repeatDays.length * 8;
   bytesCount += 3 + object.title.length * 3;
   return bytesCount;
 }
@@ -115,8 +121,9 @@ void _taskSerialize(
   writer.writeBool(offsets[4], object.isCompleted);
   writer.writeBool(offsets[5], object.isRepeating);
   writer.writeString(offsets[6], object.note);
-  writer.writeLong(offsets[7], object.seriesId);
-  writer.writeString(offsets[8], object.title);
+  writer.writeLongList(offsets[7], object.repeatDays);
+  writer.writeLong(offsets[8], object.seriesId);
+  writer.writeString(offsets[9], object.title);
 }
 
 Task _taskDeserialize(
@@ -134,8 +141,9 @@ Task _taskDeserialize(
   object.isCompleted = reader.readBool(offsets[4]);
   object.isRepeating = reader.readBool(offsets[5]);
   object.note = reader.readStringOrNull(offsets[6]);
-  object.seriesId = reader.readLong(offsets[7]);
-  object.title = reader.readString(offsets[8]);
+  object.repeatDays = reader.readLongList(offsets[7]) ?? [];
+  object.seriesId = reader.readLong(offsets[8]);
+  object.title = reader.readString(offsets[9]);
   return object;
 }
 
@@ -161,8 +169,10 @@ P _taskDeserializeProp<P>(
     case 6:
       return (reader.readStringOrNull(offset)) as P;
     case 7:
-      return (reader.readLong(offset)) as P;
+      return (reader.readLongList(offset) ?? []) as P;
     case 8:
+      return (reader.readLong(offset)) as P;
+    case 9:
       return (reader.readString(offset)) as P;
     default:
       throw IsarError('Unknown property with id $propertyId');
@@ -916,6 +926,120 @@ extension TaskQueryFilter on QueryBuilder<Task, Task, QFilterCondition> {
     });
   }
 
+  QueryBuilder<Task, Task, QAfterFilterCondition> repeatDaysElementEqualTo(
+    int value,
+  ) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(
+        FilterCondition.equalTo(property: r'repeatDays', value: value),
+      );
+    });
+  }
+
+  QueryBuilder<Task, Task, QAfterFilterCondition> repeatDaysElementGreaterThan(
+    int value, {
+    bool include = false,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(
+        FilterCondition.greaterThan(
+          include: include,
+          property: r'repeatDays',
+          value: value,
+        ),
+      );
+    });
+  }
+
+  QueryBuilder<Task, Task, QAfterFilterCondition> repeatDaysElementLessThan(
+    int value, {
+    bool include = false,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(
+        FilterCondition.lessThan(
+          include: include,
+          property: r'repeatDays',
+          value: value,
+        ),
+      );
+    });
+  }
+
+  QueryBuilder<Task, Task, QAfterFilterCondition> repeatDaysElementBetween(
+    int lower,
+    int upper, {
+    bool includeLower = true,
+    bool includeUpper = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(
+        FilterCondition.between(
+          property: r'repeatDays',
+          lower: lower,
+          includeLower: includeLower,
+          upper: upper,
+          includeUpper: includeUpper,
+        ),
+      );
+    });
+  }
+
+  QueryBuilder<Task, Task, QAfterFilterCondition> repeatDaysLengthEqualTo(
+    int length,
+  ) {
+    return QueryBuilder.apply(this, (query) {
+      return query.listLength(r'repeatDays', length, true, length, true);
+    });
+  }
+
+  QueryBuilder<Task, Task, QAfterFilterCondition> repeatDaysIsEmpty() {
+    return QueryBuilder.apply(this, (query) {
+      return query.listLength(r'repeatDays', 0, true, 0, true);
+    });
+  }
+
+  QueryBuilder<Task, Task, QAfterFilterCondition> repeatDaysIsNotEmpty() {
+    return QueryBuilder.apply(this, (query) {
+      return query.listLength(r'repeatDays', 0, false, 999999, true);
+    });
+  }
+
+  QueryBuilder<Task, Task, QAfterFilterCondition> repeatDaysLengthLessThan(
+    int length, {
+    bool include = false,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.listLength(r'repeatDays', 0, true, length, include);
+    });
+  }
+
+  QueryBuilder<Task, Task, QAfterFilterCondition> repeatDaysLengthGreaterThan(
+    int length, {
+    bool include = false,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.listLength(r'repeatDays', length, include, 999999, true);
+    });
+  }
+
+  QueryBuilder<Task, Task, QAfterFilterCondition> repeatDaysLengthBetween(
+    int lower,
+    int upper, {
+    bool includeLower = true,
+    bool includeUpper = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.listLength(
+        r'repeatDays',
+        lower,
+        includeLower,
+        upper,
+        includeUpper,
+      );
+    });
+  }
+
   QueryBuilder<Task, Task, QAfterFilterCondition> seriesIdEqualTo(int value) {
     return QueryBuilder.apply(this, (query) {
       return query.addFilterCondition(
@@ -1401,6 +1525,12 @@ extension TaskQueryWhereDistinct on QueryBuilder<Task, Task, QDistinct> {
     });
   }
 
+  QueryBuilder<Task, Task, QDistinct> distinctByRepeatDays() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addDistinctBy(r'repeatDays');
+    });
+  }
+
   QueryBuilder<Task, Task, QDistinct> distinctBySeriesId() {
     return QueryBuilder.apply(this, (query) {
       return query.addDistinctBy(r'seriesId');
@@ -1462,6 +1592,12 @@ extension TaskQueryProperty on QueryBuilder<Task, Task, QQueryProperty> {
   QueryBuilder<Task, String?, QQueryOperations> noteProperty() {
     return QueryBuilder.apply(this, (query) {
       return query.addPropertyName(r'note');
+    });
+  }
+
+  QueryBuilder<Task, List<int>, QQueryOperations> repeatDaysProperty() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addPropertyName(r'repeatDays');
     });
   }
 

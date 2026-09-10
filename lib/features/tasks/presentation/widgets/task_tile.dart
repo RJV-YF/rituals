@@ -239,6 +239,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_slidable/flutter_slidable.dart';
 import 'package:rituals/core/theme/app_colors.dart';
 import 'package:rituals/core/theme/app_typography.dart';
+import 'package:rituals/core/utils/date_labels.dart';
 import 'package:rituals/features/tasks/data/models/task.dart';
 
 /// The card radius, shared by the actions behind it so the two read as one
@@ -378,16 +379,18 @@ class _TaskCard extends StatelessWidget {
 
                 if (task.isRepeating || task.hasAlarm) ...[
                   const SizedBox(height: 10),
-                  Row(
+                  // Wraps so a long schedule pushes the alarm onto its own
+                  // line instead of overflowing the card.
+                  Wrap(
+                    spacing: 8,
+                    runSpacing: 6,
                     children: [
                       if (task.isRepeating)
-                        const _Tag(
+                        _Tag(
                           icon: CupertinoIcons.repeat,
                           color: AppColors.moss,
-                          label: 'Daily',
+                          label: DateLabels.repeatDays(task.scheduledDays),
                         ),
-                      if (task.isRepeating && task.hasAlarm)
-                        const SizedBox(width: 8),
                       if (task.hasAlarm)
                         _Tag(
                           icon: CupertinoIcons.alarm,

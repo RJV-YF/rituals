@@ -2,6 +2,7 @@ import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:rituals/core/theme/app_colors.dart';
 import 'package:rituals/core/theme/app_typography.dart';
+import 'package:rituals/core/utils/date_labels.dart';
 import 'package:rituals/features/tasks/data/models/task.dart';
 import 'package:rituals/features/tasks/data/models/task_draft.dart';
 
@@ -30,6 +31,7 @@ class _TaskFormSheetState extends State<TaskFormSheet> {
   late final TextEditingController _titleController;
   late final TextEditingController _noteController;
   late bool _isRepeating;
+  late Set<int> _repeatDays;
   late bool _hasAlarm;
   late TimeOfDay _alarmTime;
 
@@ -43,6 +45,9 @@ class _TaskFormSheetState extends State<TaskFormSheet> {
     _titleController = TextEditingController(text: task?.title ?? '');
     _noteController = TextEditingController(text: task?.note ?? '');
     _isRepeating = task?.isRepeating ?? false;
+    // Switching repeat on for the first time starts from every day, which is
+    // what repeating meant before days could be picked.
+    _repeatDays = (task?.scheduledDays ?? allWeekdays).toSet();
     _hasAlarm = task?.hasAlarm ?? false;
     _alarmTime = task?.alarmMinutes == null
         ? _defaultAlarm
@@ -64,6 +69,31 @@ class _TaskFormSheetState extends State<TaskFormSheet> {
     if (picked != null) setState(() => _alarmTime = picked);
   }
 
+  /// Picks or drops [weekday]. The last day can't be dropped — a repeat with
+  /// no days isn't a repeat, and the switch is already the way to stop one.
+  void _toggleDay(int weekday) {
+    final isPicked = _repeatDays.contains(weekday);
+    if (isPicked && _repeatDays.length == 1) return;
+
+    setState(() {
+      isPicked ? _repeatDays.remove(weekday) : _repeatDays.add(weekday);
+    });
+  }
+
+  String get _repeatSubtitle {
+    if (!_isRepeating) return 'Comes back on the days you pick';
+
+    final days = DateLabels.repeatDays(_repeatDays);
+    return _hasAlarm ? '$days · alarm at ${_alarmTime.format(context)}' : days;
+  }
+
+  String get _alarmSubtitle {
+    if (!_hasAlarm) return 'Sets an alarm in your clock app';
+    return _isRepeating
+        ? 'Rings only on the days it repeats'
+        : 'Rings once, the next time it comes round';
+  }
+
   void _submit() {
     final title = _titleController.text.trim();
     if (title.isEmpty) {
@@ -77,6 +107,7 @@ class _TaskFormSheetState extends State<TaskFormSheet> {
         title: title,
         note: note.isEmpty ? null : note,
         isRepeating: _isRepeating,
+        repeatDays: _isRepeating ? (_repeatDays.toList()..sort()) : const [],
         hasAlarm: _hasAlarm,
         alarmMinutes: _hasAlarm
             ? _alarmTime.hour * 60 + _alarmTime.minute
@@ -139,7 +170,6 @@ class _TaskFormSheetState extends State<TaskFormSheet> {
                         const SizedBox(height: 8),
                         TextField(
                           controller: _titleController,
-                          autofocus: !_isEditing,
                           textCapitalization: TextCapitalization.sentences,
                           textInputAction: TextInputAction.next,
                           style: AppTypography.fieldInput,
@@ -178,16 +208,23 @@ class _TaskFormSheetState extends State<TaskFormSheet> {
                           icon: CupertinoIcons.repeat,
                           color: AppColors.moss,
                           title: 'Repeats',
-                          subtitle: 'Comes back on tomorrow’s list',
+                          subtitle: _repeatSubtitle,
                           value: _isRepeating,
                           onChanged: (v) => setState(() => _isRepeating = v),
+                          expanded: _isRepeating
+                              ? _DayPicker(
+                                  selected: _repeatDays,
+                                  color: AppColors.moss,
+                                  onToggle: _toggleDay,
+                                )
+                              : null,
                         ),
                         const SizedBox(height: 12),
                         _ToggleTile(
                           icon: CupertinoIcons.alarm,
                           color: AppColors.clay,
                           title: 'Alarm',
-                          subtitle: 'Sets an alarm in your clock app',
+                          subtitle: _alarmSubtitle,
                           value: _hasAlarm,
                           onChanged: (v) => setState(() => _hasAlarm = v),
                           expanded: _hasAlarm
@@ -226,6 +263,93 @@ class _FieldLabel extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Text(text, style: AppTypography.fieldLabel);
+  }
+}
+
+/// The week as a row of initials, Monday first. Picked days fill with
+/// [color]; the rest stay a faint tint so the chosen days are what reads.
+class _DayPicker extends StatelessWidget {
+  const _DayPicker({
+    required this.selected,
+    required this.color,
+    required this.onToggle,
+  });
+
+  final Set<int> selected;
+  final Color color;
+  final void Function(int weekday) onToggle;
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.only(top: 14),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        children: [
+          for (final weekday in allWeekdays)
+            _DayDot(
+              weekday: weekday,
+              isSelected: selected.contains(weekday),
+              color: color,
+              onTap: () => onToggle(weekday),
+            ),
+        ],
+      ),
+    );
+  }
+}
+
+class _DayDot extends StatelessWidget {
+  const _DayDot({
+    required this.weekday,
+    required this.isSelected,
+    required this.color,
+    required this.onTap,
+  });
+
+  static const _size = 32.0;
+
+  final int weekday;
+  final bool isSelected;
+  final Color color;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    // The initial alone is ambiguous (two Ts, two Ss), so screen readers get
+    // the full day name instead.
+    return Semantics(
+      button: true,
+      selected: isSelected,
+      label: DateLabels.weekdays[weekday - 1],
+      excludeSemantics: true,
+      child: GestureDetector(
+        behavior: HitTestBehavior.opaque,
+        onTap: onTap,
+        child: AnimatedContainer(
+          duration: const Duration(milliseconds: 160),
+          curve: Curves.easeOut,
+          width: _size,
+          height: _size,
+          alignment: Alignment.center,
+          decoration: BoxDecoration(
+            shape: BoxShape.circle,
+            color: isSelected
+                ? color
+                : AppColors.inkMuted.withValues(alpha: 0.08),
+          ),
+          child: Text(
+            DateLabels.weekdayInitial(weekday),
+            style: AppTypography.tag.copyWith(
+              fontSize: 12,
+              color: isSelected
+                  ? AppColors.parchment
+                  : AppColors.inkMuted.withValues(alpha: 0.8),
+            ),
+          ),
+        ),
+      ),
+    );
   }
 }
 
@@ -288,23 +412,25 @@ class _ToggleTile extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return InkWell(
-      borderRadius: BorderRadius.circular(16),
-      onTap: () => onChanged(!value),
-      child: AnimatedContainer(
-        duration: const Duration(milliseconds: 180),
-        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
-        decoration: BoxDecoration(
-          color: AppColors.surface,
-          borderRadius: BorderRadius.circular(16),
-          border: Border.all(
-            color: value ? color.withValues(alpha: 0.6) : Colors.transparent,
-            width: 1.4,
-          ),
+    return AnimatedContainer(
+      duration: const Duration(milliseconds: 180),
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+      decoration: BoxDecoration(
+        color: AppColors.surface,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(
+          color: value ? color.withValues(alpha: 0.6) : Colors.transparent,
+          width: 1.4,
         ),
-        child: Column(
-          children: [
-            Row(
+      ),
+      child: Column(
+        children: [
+          // Only the header toggles, so a near-miss on a day or on the alarm
+          // time doesn't switch the whole tile off.
+          InkWell(
+            borderRadius: BorderRadius.circular(12),
+            onTap: () => onChanged(!value),
+            child: Row(
               children: [
                 Container(
                   width: 40,
@@ -332,9 +458,14 @@ class _ToggleTile extends StatelessWidget {
                 ),
               ],
             ),
-            ?expanded,
-          ],
-        ),
+          ),
+          AnimatedSize(
+            duration: const Duration(milliseconds: 180),
+            curve: Curves.easeOut,
+            alignment: Alignment.topCenter,
+            child: expanded ?? const SizedBox(width: double.infinity),
+          ),
+        ],
       ),
     );
   }

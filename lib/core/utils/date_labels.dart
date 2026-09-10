@@ -27,6 +27,35 @@ abstract final class DateLabels {
 
   static String weekday(DateTime date) => weekdays[date.weekday - 1];
 
+  /// `Mon` for ISO weekday 1.
+  static String shortWeekday(int weekday) =>
+      weekdays[weekday - 1].substring(0, 3);
+
+  /// `M` for ISO weekday 1 — ambiguous alone, so only shown in a week row.
+  static String weekdayInitial(int weekday) => weekdays[weekday - 1][0];
+
+  /// How a repeat schedule of ISO weekdays reads in a tag: `Daily`,
+  /// `Weekdays`, `Weekends`, `Mon–Thu` for an unbroken run of three or more,
+  /// and otherwise `Mon, Wed, Fri`.
+  static String repeatDays(Iterable<int> days) {
+    final sorted = days.toSet().toList()..sort();
+
+    switch (sorted.join()) {
+      case '1234567':
+        return 'Daily';
+      case '12345':
+        return 'Weekdays';
+      case '67':
+        return 'Weekends';
+    }
+
+    final isRun = sorted.last - sorted.first == sorted.length - 1;
+    if (sorted.length >= 3 && isRun) {
+      return '${shortWeekday(sorted.first)}–${shortWeekday(sorted.last)}';
+    }
+    return sorted.map(shortWeekday).join(', ');
+  }
+
   static String month(DateTime date) => months[date.month - 1];
 
   static String shortMonth(DateTime date) => month(date).substring(0, 3);

@@ -25,21 +25,21 @@ class AlarmService {
 
   /// Sets an alarm for [hour]:[minute], labelled [label].
   ///
-  /// When [daily] is true the alarm is registered to repeat every day of the
-  /// week, matching a repeating task; otherwise it fires at the next
-  /// occurrence of that time and does not repeat.
+  /// [days] are the ISO weekdays (1 for Monday through 7 for Sunday) the alarm
+  /// repeats on, matching a repeating task's schedule. When empty the alarm
+  /// fires at the next occurrence of that time and does not repeat.
   Future<AlarmResult> setAlarm({
     required int hour,
     required int minute,
     required String label,
-    required bool daily,
+    List<int> days = const [],
   }) async {
     try {
       final handled = await _channel.invokeMethod<bool>('setAlarm', {
         'hour': hour,
         'minute': minute,
         'label': label,
-        'daily': daily,
+        'days': days,
       });
       return (handled ?? false) ? AlarmResult.set : AlarmResult.noClockApp;
     } on PlatformException {
